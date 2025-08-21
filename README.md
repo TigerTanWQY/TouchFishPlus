@@ -1,3 +1,13 @@
+
+
+# TouchFishPlus 的特别说明
+[< 返回稳定版 TouchFish](https://github.com/2044-space-elevator/TouchFish)
+
+这是 TouchFish 的进阶版（Beta 版），可能包含一些未实装到 TouchFish 的新功能和特性，如果有大的更改可以优先在这里提交 Pull Request
+
+**警告：这是开发中的测试版，可能存在未修复的 Bug**
+
+=======
 # 机房聊天软件（断公网可用）
 
 汪氏军工制作，Luogu UID:824363
@@ -32,3 +42,4 @@ Client 是窗口版的，IP 输入 server 的 ip, username 输入自己的昵称
 - 1.1 修改了发送时，新消息无法自动刷新的问题以及会出现行末空格的问题。修改了一人退室所有人暴毙的问题。
 
 - 1.2 优化客户端和服务端体验，重做客户端UI，添加轻量化客户端。
+
