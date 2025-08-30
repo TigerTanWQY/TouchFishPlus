@@ -443,7 +443,7 @@ class ChatClient:
         if not message:
             return
             
-        full_msg = f"{self.username}: {message}\n"
+        full_msg = f"{self.username}: {message}"
         try:
             self.socket.send(full_msg.encode("utf-8"))
             # 立即显示自己发送的消息
@@ -494,7 +494,7 @@ class ChatClient:
         formatted_message = f"[{current_time}] {message}\n"
         
         # 检查是否包含@自己的消息
-        if f"@【{self.username}】" in message:
+        if f"@{self.username}" in message:
             # 使用主题色突出显示
             self.chat_text.insert("end", formatted_message, "highlight")
         else:

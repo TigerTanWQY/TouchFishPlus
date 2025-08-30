@@ -20,6 +20,7 @@ class TFServer:
         self.ip = ip
         self.port = port
         self.max_connections = max_connections
+        self.original_max_connections = max_connections    # 保存原始最大连接数
         
         self.socket = None
         self.conn = []
@@ -254,6 +255,9 @@ class TFServer:
                     print("🛑 正在停止服务器...")
                     self.stop()
                     break
+                elif cmd.startswith("maxconn "):
+                    args = cmd[8:].strip()
+                    self.handle_maxconn_command(args)
                 elif cmd == "":
                     continue
                 else:
@@ -283,6 +287,10 @@ class TFServer:
         print("  unban <ip> <port> - 解封指定IP的指定端口")
         print("  banned           - 显示被封禁的IP和端口列表")
         print("  clear            - 清除所有封禁记录")
+        print("\n连接数控制:")
+        print("  maxconn <number> - 设置最大连接数")
+        print("  maxconn show     - 显示当前最大连接数")
+        print("  maxconn reset    - 重置为初始最大连接数")
         print("\n示例:")
         print("  ban 192.168.1.100")
         print("  ban 192.168.1.100 8080")
@@ -397,7 +405,72 @@ class TFServer:
             print(f"✅ 消息已发送给 {sent_count} 个客户端")
         else:
             print("ℹ️  当前没有连接的客户端")
+    
+    def handle_maxconn_command(self, args):
+        """处理最大连接数命令"""
+        if args == "show":
+            print(f"📊 当前最大连接数: {self.max_connections}")
+            print(f"📊 初始最大连接数: {self.original_max_connections}")
+        elif args == "reset":
+            old_value = self.max_connections
+            self.max_connections = self.original_max_connections
+            print(f"✅ 最大连接数已从 {old_value} 重置为 {self.original_max_connections}")
+        else:
+            try:
+                new_max = int(args)
+                if new_max < 1:
+                    print("❌ 错误: 最大连接数必须大于0")
+                elif new_max > 1000:
+                    print("❌ 错误: 最大连接数不能超过1000")
+                else:
+                    old_value = self.max_connections
+                    self.max_connections = new_max
+                    print(f"✅ 最大连接数已从 {old_value} 更改为 {new_max}")
+                    
+                    # 如果当前连接数超过新的最大连接数，需要断开超出的连接
+                    current_connections = len(self.conn)
+                    if current_connections > new_max:
+                        excess = current_connections - new_max
+                        print(f"⚠️  当前连接数({current_connections})超过新限制({new_max})，将断开{excess}个连接")
+                        self.disconnect_excess_connections(excess)
+                        
+            except ValueError:
+                print("❌ 错误: 请输入有效的数字或'show'/'reset'")
+
+    def disconnect_excess_connections(self, excess_count):
+        """断开超出的连接"""
+        disconnected = 0
+        # 从最新的连接开始断开（后进先出）
+        for i in range(len(self.conn) - 1, -1, -1):
+            if disconnected >= excess_count:
+                break
                 
+            try:
+                addr = self.address[i]
+                username = self.usernames[i]
+                self.conn[i].send("服务器已调整最大连接数，您的连接已被断开".encode("utf-8"))
+                self.conn[i].close()
+                print(f"🔌 已断开连接: {addr[0]}:{addr[1]} (用户: {username})")
+                disconnected += 1
+                
+                # 从列表中移除
+                self.conn.pop(i)
+                self.address.pop(i)
+                self.usernames.pop(i)
+                
+            except Exception as e:
+                print(f"❌ 断开连接时出错: {e}")
+                # 即使出错也移除
+                if i < len(self.conn):
+                    self.conn.pop(i)
+                if i < len(self.address):
+                    self.address.pop(i)
+                if i < len(self.usernames):
+                    self.usernames.pop(i)
+                disconnected += 1
+        
+        print(f"✅ 已成功断开 {disconnected} 个连接")
+    
     def show_status(self):
         """显示服务器状态"""
         print("\n=== TouchFish服务器状态 ===")
@@ -408,7 +481,7 @@ class TFServer:
         print(f"已注册用户: {len([name for name in self.usernames if name])}")
         print(f"完全封禁IP: {len(self.banned_ips)}")
         print(f"端口封禁数: {sum(len(ports) for ports in self.banned_ports.values())}")
-        print("\n服务器运行时间: {self.get_uptime()}")
+        print(f"\n服务器运行时间: {self.get_uptime()}")
         print("==========================\n")
         
     def get_uptime(self):
